@@ -27,6 +27,11 @@ async fn handler(qry: HashMap<String, Value>, body: Vec<u8>) {
 
 fn handle_post(_qry: HashMap<String, Value>, body: Vec<u8>) {
     let data: Result<HashMap<String, Value>, _> = serde_json::from_slice(&body);
+    send_response(
+        200,
+        vec![(String::from("content-type"), String::from("text/html"))],
+        body,
+    );
     match data {
         Ok(parsed_data) => {
             for (key, val) in parsed_data {
