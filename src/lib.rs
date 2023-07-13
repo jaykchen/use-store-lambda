@@ -40,7 +40,7 @@ async fn handler(qry: HashMap<String, Value>, body: Vec<u8>) {
                 send_response(
                     200,
                     vec![(String::from("content-type"), String::from("text/html"))],
-                    format!("key: {key}, val: {val} saved").as_bytes().to_vec(),
+                    format!("key: {key}, val: {val:?} saved").as_bytes().to_vec(),
                 );
                 return;
             }
