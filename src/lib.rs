@@ -15,57 +15,36 @@ pub async fn run() {
 // set_response(body.as_ptr(), body.len() as i32);
 
 async fn handler(qry: HashMap<String, Value>, body: Vec<u8>) {
-    if let Some(Value::String(method)) = qry.get("method") {
-        match method.as_str() {
-            "POST" => handle_post(qry, body),
-            _ => handle_get(qry),
-        }
-    } else {
-        handle_get(qry);
-    }
-}
+    let mut val = String::from("no data found");
+    match qry.get("key").unwrap().as_str() {
+        Some(key_to_get_val) => match get(&key_to_get_val) {
+            Some(data) => {
+                val = data.to_string();
+            }
 
-fn handle_post(_qry: HashMap<String, Value>, body: Vec<u8>) {
-    let data: Result<HashMap<String, Value>, _> = serde_json::from_slice(&body);
-    send_response(
-        200,
-        vec![(String::from("content-type"), String::from("text/html"))],
-        body,
-    );
-    match data {
-        Ok(parsed_data) => {
-            for (key, val) in parsed_data {
+            None => {}
+        },
+        None => {
+            for (key, val) in qry {
+                if val.as_str().map(|s| s.is_empty()).unwrap_or(true) {
+                    send_response(
+                        400,
+                        vec![(String::from("content-type"), String::from("text/html"))],
+                        format!("No value provided for key: {key}")
+                            .as_bytes()
+                            .to_vec(),
+                    );
+                    return;
+                }
                 set(&key, val.clone(), None);
                 send_response(
                     200,
                     vec![(String::from("content-type"), String::from("text/html"))],
                     format!("key: {key}, val: {val} saved").as_bytes().to_vec(),
                 );
-
-                break;
             }
+            return;
         }
-        Err(e) => {
-            send_response(
-                400,
-                vec![(String::from("content-type"), String::from("text/html"))],
-                format!("Error parsing POST payload JSON: {:?}", e)
-                    .as_bytes()
-                    .to_vec(),
-            );
-        }
-    }
-}
-
-fn handle_get(_qry: HashMap<String, Value>) {
-    let key = _qry.get("key").unwrap().as_str().unwrap();
-
-    let mut val = String::from("no data found");
-
-    match get(&key) {
-        Some(data) => val = data.to_string(),
-
-        None => {}
     }
 
     send_response(
