@@ -28,30 +28,32 @@ async fn handler(qry: HashMap<String, Value>, body: Vec<u8>) {
     }
 
     if !body.is_empty() {
-        let result: Result<HashMap<String, Value>, _> = serde_json::from_slice(&body);
+        let result: Result<serde_json::Value, _> = serde_json::from_slice(&body);
 
         match result {
             Ok(data) => {
-                for (key, val) in data {
-                    if val.as_str().map(|s| s.is_empty()).unwrap_or(true) {
+                if let serde_json::Value::Object(map) = data {
+                    for (key, val) in map {
+                        if val.as_str().map(|s| s.is_empty()).unwrap_or(true) {
+                            send_response(
+                                400,
+                                vec![(String::from("content-type"), String::from("text/html"))],
+                                format!("No value provided for key: {key}")
+                                    .as_bytes()
+                                    .to_vec(),
+                            );
+                            return;
+                        }
+                        set(&key, val.clone(), None);
                         send_response(
-                            400,
+                            200,
                             vec![(String::from("content-type"), String::from("text/html"))],
-                            format!("No value provided for key: {key}")
+                            format!("key: {key}, val: {val:?} saved")
                                 .as_bytes()
                                 .to_vec(),
                         );
                         return;
                     }
-                    set(&key, val.clone(), None);
-                    send_response(
-                        200,
-                        vec![(String::from("content-type"), String::from("text/html"))],
-                        format!("key: {key}, val: {val:?} saved")
-                            .as_bytes()
-                            .to_vec(),
-                    );
-                    return;
                 }
             }
             Err(e) => {
