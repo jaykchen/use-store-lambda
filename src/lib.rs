@@ -37,34 +37,46 @@ async fn handler(qry: HashMap<String, Value>, body: Vec<u8>) {
             Ok(data) => {
                 if let serde_json::Value::Object(map) = data {
                     for (key, val) in map {
-                        if val.is_array() {
-                            let records: HashSet<String> = val.as_array().unwrap()
+                        let new_values: Vec<String> = match val {
+                            Value::Array(arr) => arr
                                 .iter()
                                 .filter_map(Value::as_str)
                                 .map(String::from)
-                                .collect();
-                            set(&key, serde_json::json!(records), None);
-                        } else {
-                            if val.as_str().map(|s| s.is_empty()).unwrap_or(true) {
-                                send_response(
-                                    400,
-                                    vec![(String::from("content-type"), String::from("text/html"))],
-                                    format!("No value provided for key: {}", key)
-                                        .as_bytes()
-                                        .to_vec(),
-                                );
-                                return;
-                            }
-                            set(&key, val.clone(), None);
+                                .collect(),
+                            Value::String(s) => vec![s],
+                            _ => vec![],
+                        };
+
+                        if new_values.is_empty() {
                             send_response(
-                                200,
+                                400,
                                 vec![(String::from("content-type"), String::from("text/html"))],
-                                format!("key: {}, val: {:?} saved", key, val)
+                                format!("No value provided for key: {}", key)
                                     .as_bytes()
                                     .to_vec(),
                             );
                             return;
                         }
+
+                        // Get existing records, if any
+                        let mut existing_records = get(&key)
+                            .and_then(|val| serde_json::from_value(val).ok())
+                            .unwrap_or_else(HashSet::new);
+
+                        // Merge existing and new records
+                        existing_records.extend(new_values);
+
+                        // Save updated records
+                        set(&key, serde_json::json!(existing_records), None);
+
+                        send_response(
+                            200,
+                            vec![(String::from("content-type"), String::from("text/html"))],
+                            format!("key: {}, values: {:?} saved", key, existing_records)
+                                .as_bytes()
+                                .to_vec(),
+                        );
+                        return;
                     }
                 }
             }
