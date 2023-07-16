@@ -16,12 +16,14 @@ pub async fn run() {
 
 async fn handler(qry: HashMap<String, Value>, body: Vec<u8>) {
     let mut val = String::from("no data found");
-    match qry.get("key").unwrap().as_str() {
-        Some(key_to_get_val) => match get(&key_to_get_val) {
-            Some(data) => {
-                val = data.to_string();
-            }
-
+    match qry.get("key") {
+        Some(key_value) => match key_value.as_str() {
+            Some(key_to_get_val) => match get(&key_to_get_val) {
+                Some(data) => {
+                    val = data.to_string();
+                }
+                None => {}
+            },
             None => {}
         },
         None => {}
@@ -48,7 +50,7 @@ async fn handler(qry: HashMap<String, Value>, body: Vec<u8>) {
                         send_response(
                             200,
                             vec![(String::from("content-type"), String::from("text/html"))],
-                            format!("key: {key}, val: {val:?} saved")
+                            format!("key: {}, val: {:?} saved", key, val)
                                 .as_bytes()
                                 .to_vec(),
                         );
